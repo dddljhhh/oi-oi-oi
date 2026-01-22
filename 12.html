@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>卡通热电片发电模拟器（TEG）</title>
+  <style>
+    :root{
+      --bg1:#fff2cc;
+      --bg2:#ffd6e7;
+      --ink:#2b2b2b;
+      --muted:#6a6a6a;
+      --card:#ffffffcc;
+      --line:#2b2b2b30;
+
+      --hot:#ff6b6b;
+      --cold:#4dabf7;
+      --accent:#7c5cff;
+
+      --shadow: 0 10px 30px rgba(0,0,0,.10);
+      --radius: 22px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+            Roboto, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(900px 500px at 20% 10%, #ffffffaa 0%, transparent 55%),
+        radial-gradient(900px 500px at 80% 30%, #ffffffaa 0%, transparent 55%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+      min-height:100vh;
+      padding:18px;
+    }
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap:16px;
+      align-items:stretch;
+    }
+    @media (max-width: 960px){ .wrap{grid-template-columns:1fr;} }
+
+    .header{
+      max-width:1100px;margin:0 auto 12px;
+      display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+    }
+    .title{
+      display:flex;align-items:center;gap:10px;
+    }
+    .logo{
+      width:42px;height:42px;border-radius:14px;
+      background: linear-gradient(135deg, #fff, #ffe3f1);
+      box-shadow: var(--shadow);
+      border:2px solid #00000010;
+      display:grid;place-items:center;
+      font-size:20px;
+    }
+    h1{margin:0;font-size:18px}
+    .sub{color:var(--muted);font-size:13px;margin-top:2px}
+    .chip{
+      display:inline-flex;gap:8px;align-items:center;
+      padding:8px 12px;border-radius:999px;
+      background:#ffffffb3;border:1px dashed #00000025;
+      box-shadow: 0 6px 16px rgba(0,0,0,.06);
+      font-size:13px;color:var(--muted);
+    }
+
+    .card{
+      background: var(--card);
+      border:2px solid #00000012;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+
+    .controls h2, .scene h2{
+      margin:0 0 10px;font-size:16px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .badge{
+      font-size:12px;color:#fff;
+      padding:4px 8px;border-radius:999px;
+      background: linear-gradient(135deg, var(--accent), #ff8bd4);
+      box-shadow: 0 6px 14px rgba(124,92,255,.25);
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 120px;
+      gap:10px;
+      align-items:center;
+      margin:12px 0;
+    }
+    .row label{color:#444}
+    .val{
+      text-align:right;
+      font-weight:700;
+      background:#fff;
+      border:1px solid #00000014;
+      border-radius:12px;
+      padding:7px 10px;
+      box-shadow: 0 6px 12px rgba(0,0,0,.05);
+    }
+    input[type="range"]{width:100%}
+
+    .kvs{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+    .kv{
+      background:#fff;
+      border:1px solid #00000012;
+      border-radius:16px;
+      padding:10px;
+      box-shadow: 0 8px 16px rgba(0,0,0,.05);
+    }
+    .kv .k{font-size:12px;color:var(--muted)}
+    .kv .v{font-size:16px;font-weight:800;margin-top:2px}
+    .hint{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:16px;
+      background: linear-gradient(135deg, #fff, #fff7fd);
+      border:1px dashed #00000022;
+      color:#555;
+      font-size:13px;
+    }
+
+    /* Scene */
+    .scene{
+      position:relative;
+      overflow:hidden;
+    }
+    .sky{
+      height:110px;
+      border-radius:18px;
+      background:
+        radial-gradient(80px 80px at 20% 40%, #ffffff 0%, #ffffff80 55%, transparent 60%),
+        radial-gradient(90px 90px at 55% 30%, #ffffff 0%, #ffffff80 55%, transparent 60%),
+        radial-gradient(85px 85px at 85% 45%, #ffffff 0%, #ffffff80 55%, transparent 60%),
+        linear-gradient(135deg, #eaf7ff, #fff3fb);
+      border:2px solid #00000010;
+      box-shadow: inset 0 0 0 2px #ffffff80;
+      position:relative;
+    }
+    .ground{
+      margin-top:12px;
+      border-radius:18px;
+      background: linear-gradient(135deg, #fff, #fff9d8);
+      border:2px solid #00000010;
+      padding:14px;
+      box-shadow: inset 0 0 0 2px #ffffff80;
+    }
+
+    .lab{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+    }
+
+    /* Cartoon TEG block */
+    .teg-wrap{
+      display:grid;
+      grid-template-columns: 1fr 160px;
+      gap:12px;
+      align-items:center;
+    }
+    @media (max-width: 960px){ .teg-wrap{grid-template-columns:1fr;} }
+
+    .teg{
+      position:relative;
+      border-radius:22px;
+      padding:14px;
+      background: linear-gradient(135deg, #ffffff, #fff9ff);
+      border:2px solid #00000012;
+      box-shadow: 0 10px 22px rgba(0,0,0,.08);
+    }
+    .stack{
+      display:grid;
+      grid-template-rows: 64px 86px 64px;
+      gap:10px;
+      align-items:stretch;
+    }
+    .plate{
+      border-radius:18px;
+      border:2px solid #00000018;
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 12px;
+      box-shadow: inset 0 -6px 0 rgba(0,0,0,.04);
+      position:relative;
+      overflow:hidden;
+    }
+    .hot{
+      background: linear-gradient(135deg, #ffd1d1, #ff7b7b);
+    }
+    .cold{
+      background: linear-gradient(135deg, #d7ecff, #57b0ff);
+    }
+    .tegcore{
+      background: linear-gradient(135deg, #e9e9ff, #ffffff);
+    }
+
+    .plate .label{
+      font-weight:900;
+      letter-spacing:.3px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .emoji{
+      width:34px;height:34px;border-radius:14px;
+      display:grid;place-items:center;
+      background:#fff;
+      border:2px solid #00000018;
+      box-shadow: 0 8px 14px rgba(0,0,0,.08);
+      font-size:18px;
+    }
+    .meter{
+      min-width:160px;
+      height:18px;
+      border-radius:999px;
+      background: rgba(255,255,255,.65);
+      border:2px solid #00000018;
+      overflow:hidden;
+      position:relative;
+      box-shadow: inset 0 2px 0 rgba(0,0,0,.06);
+    }
+    .meter > span{
+      display:block;height:100%;
+      width:30%;
+      border-radius:999px;
+      background: linear-gradient(90deg, #fff, rgba(255,255,255,.2));
+    }
+    .meter.small{min-width:120px;height:14px;border-width:2px}
+    .meter-note{font-size:12px;color:#333;opacity:.85;text-align:right;margin-top:6px}
+
+    /* Wires + bulb */
+    .bulbBox{
+      border-radius:22px;
+      background: linear-gradient(135deg, #fff, #fff6dc);
+      border:2px solid #00000012;
+      box-shadow: 0 10px 22px rgba(0,0,0,.08);
+      padding:12px;
+      display:grid;gap:10px;justify-items:center;
+    }
+    .bulb{
+      width:90px;height:120px;
+      position:relative;
+      filter: drop-shadow(0 10px 12px rgba(0,0,0,.18));
+    }
+    .glass{
+      position:absolute;left:50%;top:0;transform:translateX(-50%);
+      width:78px;height:88px;border-radius:45px 45px 38px 38px;
+      background: radial-gradient(50px 55px at 35% 25%, rgba(255,255,255,.95), rgba(255,255,255,.35) 55%, rgba(255,255,255,.18) 75%),
+                  linear-gradient(180deg, rgba(255,255,255,.65), rgba(255,255,255,.18));
+      border:3px solid rgba(0,0,0,.20);
+      overflow:hidden;
+    }
+    .glow{
+      position:absolute;inset:-30px;
+      border-radius:999px;
+      background: radial-gradient(circle, rgba(255, 224, 102, .95), rgba(255, 224, 102, 0) 60%);
+      opacity:0;
+      transform: scale(.9);
+      transition: opacity .15s ease, transform .15s ease;
+      pointer-events:none;
+    }
+    .filament{
+      position:absolute;left:50%;top:44px;transform:translateX(-50%);
+      width:36px;height:16px;border-radius:10px;
+      border:3px solid rgba(255, 166, 0, .8);
+      border-top-color: transparent;
+      background: rgba(255,166,0,.08);
+      box-shadow: 0 0 0 rgba(255,166,0,0);
+      transition: box-shadow .15s ease;
+    }
+    .base{
+      position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+      width:58px;height:40px;border-radius:12px 12px 18px 18px;
+      background: linear-gradient(180deg, #c7c7c7, #8d8d8d);
+      border:3px solid rgba(0,0,0,.20);
+      box-shadow: inset 0 5px 0 rgba(255,255,255,.25);
+    }
+    .bulbLabel{
+      font-weight:900;
+      font-size:13px;
+      color:#5a4b00;
+    }
+    .bulbMeta{
+      width:100%;
+      background:#fff;
+      border:1px solid #00000012;
+      border-radius:16px;
+      padding:10px;
+      box-shadow: 0 8px 16px rgba(0,0,0,.05);
+      font-size:13px;
+      color:#444;
+    }
+    .bulbMeta .big{
+      font-size:16px;font-weight:900;margin-top:2px;color:#222;
+    }
+
+    /* cute arrows inside core */
+    .arrows{
+      position:absolute;left:12px;right:12px;top:50%;
+      transform:translateY(-50%);
+      display:flex;justify-content:space-between;gap:10px;
+      opacity:.85;
+    }
+    .arrow{
+      flex:1;
+      height:12px;
+      background: linear-gradient(90deg, rgba(124,92,255,.0), rgba(124,92,255,.35), rgba(124,92,255,.0));
+      border-radius:999px;
+      position:relative;
+    }
+    .arrow:after{
+      content:"";
+      position:absolute;right:6px;top:50%;transform:translateY(-50%);
+      border-left:10px solid rgba(124,92,255,.55);
+      border-top:6px solid transparent;
+      border-bottom:6px solid transparent;
+    }
+
+    .footerNote{
+      margin-top:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    /* Little sparkles */
+    .spark{
+      position:absolute;
+      width:10px;height:10px;border-radius:999px;
+      background: #fff;
+      opacity:.65;
+      filter: blur(.2px);
+      animation: float 3.5s ease-in-out infinite;
+    }
+    @keyframes float{
+      0%,100%{transform: translateY(0)}
+      50%{transform: translateY(-8px)}
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">
+      <div class="logo">🔋</div>
+      <div>
+        <h1>卡通热电片发电模拟器（TEG → 灯泡）</h1>
+        <div class="sub">调温差与电阻，看热电片发电，灯泡随功率变亮 ✨</div>
+      </div>
+    </div>
+    <div class="chip">知识点：Seebeck 效应 + 等效电路（Voc= S·ΔT，Rint 串联 RL）</div>
+  </div>
+
+  <div class="wrap">
+    <!-- Controls -->
+    <div class="card controls">
+      <h2>参数控制 <span class="badge">拖动滑条</span></h2>
+
+      <div class="row">
+        <label>Seebeck 系数 S（μV/K）</label>
+        <div class="val" id="Sval">200 μV/K</div>
+        <input id="S" type="range" min="50" max="400" step="1" value="200">
+      </div>
+
+      <div class="row">
+        <label>温差 ΔT（K）</label>
+        <div class="val" id="dTval">60 K</div>
+        <input id="dT" type="range" min="0" max="200" step="1" value="60">
+      </div>
+
+      <div class="row">
+        <label>内阻 R<sub>int</sub>（Ω）</label>
+        <div class="val" id="Rintval">4.0 Ω</div>
+        <input id="Rint" type="range" min="0.1" max="20" step="0.1" value="4.0">
+      </div>
+
+      <div class="row">
+        <label>负载 R<sub>L</sub>（Ω）</label>
+        <div class="val" id="RLval">4.0 Ω</div>
+        <input id="RL" type="range" min="0.1" max="40" step="0.1" value="4.0">
+      </div>
+
+      <div class="kvs">
+        <div class="kv">
+          <div class="k">开路电压 V<sub>oc</sub>（V）</div>
+          <div class="v" id="Voc">0.012000</div>
+        </div>
+        <div class="kv">
+          <div class="k">电流 I（A）</div>
+          <div class="v" id="I">0.001500</div>
+        </div>
+        <div class="kv">
+          <div class="k">负载电压 V<sub>L</sub>（V）</div>
+          <div class="v" id="VL">0.006000</div>
+        </div>
+        <div class="kv">
+          <div class="k">负载功率 P<sub>L</sub>（W）</div>
+          <div class="v" id="PL">0.000009</div>
+        </div>
+      </div>
+
+      <div class="hint" id="hint">
+        提示：最大功率通常在 <b>R<sub>L</sub> ≈ R<sub>int</sub></b> 附近（阻抗匹配）。试试把 RL 调到接近 Rint！
+      </div>
+
+      <div class="footerNote">
+        交作业截图建议：<br>
+        ① RL≈Rint 时灯泡最亮（同屏截数值 + 灯泡）；② 改 ΔT（从小到大）灯泡变亮；③ 改 S（从小到大）灯泡变亮。
+      </div>
+    </div>
+
+    <!-- Scene -->
+    <div class="card scene">
+      <h2>可视化热电片 + 灯泡亮度 <span class="badge">实时变化</span></h2>
+
+      <div class="sky">
+        <span class="spark" style="left:14%;top:46%;animation-delay:.1s"></span>
+        <span class="spark" style="left:36%;top:22%;animation-delay:.8s"></span>
+        <span class="spark" style="left:62%;top:52%;animation-delay:1.2s"></span>
+        <span class="spark" style="left:82%;top:28%;animation-delay:.4s"></span>
+        <div style="position:absolute;left:14px;bottom:10px;color:#546;opacity:.65;font-weight:700">
+          🌤️ 小实验台：热端更热 → 发电更多 → 灯泡更亮
+        </div>
+      </div>
+
+      <div class="ground">
+        <div class="lab">
+
+          <div class="teg-wrap">
+            <div class="teg">
+              <div class="stack">
+                <!-- HOT -->
+                <div class="plate hot">
+                  <div class="label"><span class="emoji">🔥</span> 热端（Hot）</div>
+                  <div style="min-width:190px">
+                    <div class="meter" title="温差占比">
+                      <span id="hotBar"></span>
+                    </div>
+                    <div class="meter-note">温差 ΔT：<b id="dTtext">60</b> K</div>
+                  </div>
+                </div>
+
+                <!-- CORE -->
+                <div class="plate tegcore" style="justify-content:space-between">
+                  <div class="label"><span class="emoji">🧩</span> 热电片（TEG）</div>
+                  <div style="min-width:190px">
+                    <div class="meter small" title="电压占比">
+                      <span id="vBar"></span>
+                    </div>
+                    <div class="meter-note">V<sub>oc</sub>：<b id="Voctext">0.012000</b> V</div>
+                  </div>
+
+                  <div class="arrows" aria-hidden="true">
+                    <div class="arrow" id="iArrow"></div>
+                  </div>
+                </div>
+
+                <!-- COLD -->
+                <div class="plate cold">
+                  <div class="label"><span class="emoji">🧊</span> 冷端（Cold）</div>
+                  <div style="min-width:190px">
+                    <div class="meter" title="温差占比">
+                      <span id="coldBar"></span>
+                    </div>
+                    <div class="meter-note">外接：R<sub>L</sub>=<b id="RLtext">4.0</b>Ω，R<sub>int</sub>=<b id="Rinttext">4.0</b>Ω</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- cute wire -->
+              <svg width="100%" height="70" viewBox="0 0 520 70" style="margin-top:10px">
+                <path d="M60,35 C140,10 220,10 260,35 C300,60 380,60 460,35"
+                      fill="none" stroke="rgba(0,0,0,.18)" stroke-width="10" stroke-linecap="round"/>
+                <path id="wireLive" d="M60,35 C140,10 220,10 260,35 C300,60 380,60 460,35"
+                      fill="none" stroke="rgba(124,92,255,.0)" stroke-width="6" stroke-linecap="round"/>
+                <circle cx="60" cy="35" r="9" fill="#fff" stroke="rgba(0,0,0,.22)" stroke-width="3"/>
+                <circle cx="460" cy="35" r="9" fill="#fff" stroke="rgba(0,0,0,.22)" stroke-width="3"/>
+                <text x="10" y="18" font-size="12" fill="rgba(0,0,0,.55)">导线</text>
+              </svg>
+            </div>
+
+            <div class="bulbBox">
+              <div class="bulb" aria-label="灯泡亮度随功率变化">
+                <div class="glow" id="glow"></div>
+                <div class="glass">
+                  <div class="filament" id="filament"></div>
+                </div>
+                <div class="base"></div>
+              </div>
+              <div class="bulbLabel">💡 小灯泡（越亮=功率越大）</div>
+              <div class="bulbMeta">
+                <div>亮度（0~100）</div>
+                <div class="big" id="brightText">18</div>
+                <div style="margin-top:6px;color:#666;font-size:12px">
+                  亮度按 P<sub>L</sub> 映射（非真实灯泡曲线，只为演示“发电越多越亮”）
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hint" style="margin-top:0">
+            小结：<b>V<sub>oc</sub>=S·ΔT</b>；接上负载后 <b>I=V<sub>oc</sub>/(R<sub>int</sub>+R<sub>L</sub>)</b>；
+            灯泡亮度跟 <b>P<sub>L</sub>=I²R<sub>L</sub></b> 关联。把 R<sub>L</sub> 调到接近 R<sub>int</sub>，通常最亮 ✨
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const el = (id)=>document.getElementById(id);
+  const fmt = (x, n=6)=>Number.isFinite(x)? x.toFixed(n):"—";
+
+  function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+  function compute(){
+    const S_uV = parseFloat(el("S").value);    // μV/K
+    const dT   = parseFloat(el("dT").value);   // K
+    const Rint = parseFloat(el("Rint").value); // Ω
+    const RL   = parseFloat(el("RL").value);   // Ω
+
+    el("Sval").textContent    = `${S_uV} μV/K`;
+    el("dTval").textContent   = `${dT} K`;
+    el("Rintval").textContent = `${Rint.toFixed(1)} Ω`;
+    el("RLval").textContent   = `${RL.toFixed(1)} Ω`;
+
+    // Convert to V/K
+    const S = S_uV * 1e-6;
+
+    // TEG model
+    const Voc = S * dT;
+    const I = (Rint + RL) > 0 ? (Voc / (Rint + RL)) : 0;
+    const VL = I * RL;
+    const PL = I * I * RL;
+
+    el("Voc").textContent = fmt(Voc);
+    el("I").textContent   = fmt(I);
+    el("VL").textContent  = fmt(VL);
+    el("PL").textContent  = fmt(PL);
+
+    // Scene text
+    el("dTtext").textContent = dT.toFixed(0);
+    el("Voctext").textContent = fmt(Voc);
+    el("RLtext").textContent = RL.toFixed(1);
+    el("Rinttext").textContent = Rint.toFixed(1);
+
+    // Hint for matching
+    const ratio = RL / Rint;
+    let msg = `当前 R_L/R_int = ${ratio.toFixed(2)}。`;
+    if (Math.abs(ratio - 1) < 0.15) msg = `当前 R_L≈R_int（${ratio.toFixed(2)}）✅ 你很接近“最亮区域”！`;
+    else if (ratio < 1) msg = `当前 R_L/R_int = ${ratio.toFixed(2)}，试试把 R_L 调大一点（更接近 R_int）。`;
+    else msg = `当前 R_L/R_int = ${ratio.toFixed(2)}，试试把 R_L 调小一点（更接近 R_int）。`;
+    el("hint").innerHTML = `提示：最大功率通常在 <b>R<sub>L</sub> ≈ R<sub>int</sub></b> 附近（阻抗匹配）。${msg}`;
+
+    // Visual bars
+    // dT bar: map 0..200
+    const dtN = clamp01(dT / 200);
+    el("hotBar").style.width  = `${(20 + dtN*80).toFixed(1)}%`;
+    el("coldBar").style.width = `${(20 + dtN*80).toFixed(1)}%`;
+
+    // Voc bar: map 0..0.08 V for display (cap)
+    const vN = clamp01(Voc / 0.08);
+    el("vBar").style.width = `${(12 + vN*88).toFixed(1)}%`;
+
+    // “wire live” brightness: map current
+    const iN = clamp01(I / 0.02); // arbitrary display scaling
+    el("wireLive").setAttribute("stroke", `rgba(124,92,255,${(0.05 + 0.85*iN).toFixed(3)})`);
+
+    // Bulb brightness: normalize PL relative to max over RL scan (0.1..40)
+    // (So brightness feels responsive regardless of parameter choice.)
+    const Voc2 = Voc*Voc;
+    let pMax = 1e-12;
+    for(let r=0.1; r<=40.0001; r+=0.2){
+      const i = Voc / (Rint + r);
+      const p = i*i*r;
+      if(p > pMax) pMax = p;
+    }
+    const pN = clamp01(PL / pMax);
+
+    // Apply a gamma curve so small power still shows some glow
+    const gamma = 0.55;
+    const b = Math.pow(pN, gamma); // 0..1
+    const bright = Math.round(b * 100);
+
+    el("brightText").textContent = String(bright);
+
+    // Update bulb visuals
+    const glow = el("glow");
+    const filament = el("filament");
+    glow.style.opacity = (0.02 + 0.98*b).toFixed(3);
+    glow.style.transform = `scale(${(0.85 + 0.35*b).toFixed(3)})`;
+    filament.style.boxShadow = `0 0 ${(2 + 22*b).toFixed(1)}px rgba(255,166,0,${(0.15 + 0.85*b).toFixed(3)})`;
+
+    // Current arrow “activity”
+    el("iArrow").style.opacity = (0.25 + 0.75*b).toFixed(3);
+  }
+
+  ["S","dT","Rint","RL"].forEach(id=> el(id).addEventListener("input", compute));
+  compute();
+</script>
+</body>
+</html>
